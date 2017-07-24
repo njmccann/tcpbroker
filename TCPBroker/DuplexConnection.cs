@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
@@ -36,6 +37,10 @@ namespace TCPBroker
 
 		private readonly object _lck = new object();
 
+		private string path = "";
+
+		private FileStream io;
+
 		public ReadWriteClient(TcpClient client, string name)
 		{
 			Client = client;
@@ -43,6 +48,8 @@ namespace TCPBroker
 			
 			Connected = true;
 			Name = name;
+
+			path = "out\\" + Name + "_out.txt";
 		}
 
 		public void Send(byte[] buff, int len)
@@ -74,6 +81,8 @@ namespace TCPBroker
 		{
 			return Task.Run(() =>
 			{
+				io = File.OpenWrite("out\\" + Name + "_out.hex");
+
 				try
 				{
 					while (Stream.CanRead)
@@ -88,9 +97,15 @@ namespace TCPBroker
 							break;
 						}
 
-						Console.WriteLine("*** From " + Name + " ***");
-						Console.WriteLine(len + " bytes");
-						Console.WriteLine("***.........................................***");
+						Console.WriteLine(Name + " - " + len + " bytes");
+						
+						io.Write(buff, 0, len);
+
+						var content = Encoding.Default.GetString(buff, 0, len);
+						File.AppendAllText(path, DateTime.Now.ToString("hh\\:mm\\:ss\\.fff - ") + content);
+						File.AppendAllText(path, "\r\nBytes - ");
+						File.AppendAllText(path, BitConverter.ToString(buff, 0, len));
+						File.AppendAllText(path, "\r\n------------------------EOF--------------------------\r\n\r\n");
 
 						OnRead(buff, len);
 					}
